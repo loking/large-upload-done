@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useChunkedUpload } from "@/hooks/useChunkedUpload"
-import DataPreviewTable from "@/components/DataPreviewTable"
+import DropZone from "@/components/DropZone"
+import MultiPreviewSelector from "@/components/MultiPreviewSelector"
 
 function formatBytes(n: number) {
   const units = ["B", "KB", "MB", "GB"]
@@ -15,47 +16,117 @@ function formatBytes(n: number) {
   return `${x.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
 }
 
-export default function UploadWizard() {
-  const [file, setFile] = useState<File | null>(null)
-  const { state, start, cancel, reset, sessionId } = useChunkedUpload()
+interface CompletedUpload {
+  name: string
+  sessionId: string
+}
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0]
-    if (!selected) return
-    setFile(selected)
+export default function UploadWizard() {
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [completedUploads, setCompletedUploads] = useState<CompletedUpload[]>([])
+  const [uploadingIndex, setUploadingIndex] = useState(-1)
+  const { state, start, cancel, reset, sessionId } = useChunkedUpload()
+  const prevPhaseRef = useRef(state.phase)
+
+  // When a file finishes uploading, record it and start the next
+  useEffect(() => {
+    const prevPhase = prevPhaseRef.current
+    prevPhaseRef.current = state.phase
+
+    if (state.phase === "done" && prevPhase !== "done" && sessionId) {
+      const justUploaded = pendingFiles[uploadingIndex]
+      if (justUploaded) {
+        setCompletedUploads((prev) => [
+          ...prev,
+          { name: justUploaded.name, sessionId },
+        ])
+      }
+
+      const nextIndex = uploadingIndex + 1
+      if (nextIndex < pendingFiles.length) {
+        setUploadingIndex(nextIndex)
+        reset()
+        start(pendingFiles[nextIndex])
+      }
+    }
+  }, [state.phase, sessionId, pendingFiles, uploadingIndex, reset, start])
+
+  const allDone =
+    completedUploads.length > 0 &&
+    completedUploads.length === pendingFiles.length &&
+    state.phase === "done"
+
+  const handleFilesSelected = (selected: File[]) => {
+    setPendingFiles((prev) => [...prev, ...selected])
+  }
+
+  const handleRemoveFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleStart = () => {
-    if (!file) return
-    start(file)
+    if (pendingFiles.length === 0) return
+    setUploadingIndex(0)
+    start(pendingFiles[0])
   }
 
   const handleReset = () => {
     reset()
-    setFile(null)
+    setPendingFiles([])
+    setCompletedUploads([])
+    setUploadingIndex(-1)
+  }
+
+  const handleUploadMore = () => {
+    reset()
+    setPendingFiles([])
+    setUploadingIndex(-1)
   }
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      {/* Phase: File Selection (idle, error, done) */}
-      {(state.phase === "idle" || state.phase === "error" || state.phase === "done") && (
+      {/* DropZone always visible when idle or all done */}
+      {(state.phase === "idle" || allDone) && (
         <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 20 }}>
-          <div style={{ fontWeight: 600, marginBottom: 12 }}>
-            {state.phase === "done" ? "Upload another file" : "Select a CSV file"}
-          </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={handleFileChange}
-            />
-            {file && (
-              <span style={{ color: "#444", fontSize: 14 }}>
-                {file.name} ({formatBytes(file.size)})
-              </span>
-            )}
-          </div>
-          {file && (
+          <DropZone onFilesSelected={handleFilesSelected} />
+          {pendingFiles.length > 0 && !allDone && (
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+              {pendingFiles.map((f, i) => (
+                <div
+                  key={`${f.name}-${i}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    background: "#f9fafb",
+                    borderRadius: 8,
+                    fontSize: 14,
+                  }}
+                >
+                  <span style={{ color: "#333" }}>
+                    {f.name} <span style={{ color: "#888" }}>({formatBytes(f.size)})</span>
+                  </span>
+                  <button
+                    onClick={() => handleRemoveFile(i)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#999",
+                      fontSize: 16,
+                      padding: "0 4px",
+                      lineHeight: 1,
+                    }}
+                    aria-label={`Remove ${f.name}`}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {pendingFiles.length > 0 && !allDone && (
             <button
               onClick={handleStart}
               style={{
@@ -95,7 +166,11 @@ export default function UploadWizard() {
         <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <div>
-              <div style={{ fontWeight: 600 }}>Uploading your file...</div>
+              <div style={{ fontWeight: 600 }}>
+                Uploading {pendingFiles.length > 1
+                  ? `file ${uploadingIndex + 1} of ${pendingFiles.length}...`
+                  : "your file..."}
+              </div>
               <div style={{ color: "#666", fontSize: 13, marginTop: 2 }}>
                 {state.file.name} &mdash; {formatBytes(state.bytesSent)} of {formatBytes(state.bytesTotal)}
               </div>
@@ -144,33 +219,29 @@ export default function UploadWizard() {
         </div>
       )}
 
-      {/* Phase: Done */}
-      {state.phase === "done" && (
+      {/* Phase: Done - show success + multi-preview when all files complete */}
+      {allDone && (
         <div style={{ border: "1px solid #16a34a", borderRadius: 12, padding: 20, background: "#f0fdf4" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 20, color: "#16a34a" }}>&#10003;</span>
             <div>
-              <div style={{ fontWeight: 600, color: "#15803d" }}>Upload complete</div>
+              <div style={{ fontWeight: 600, color: "#15803d" }}>
+                {completedUploads.length === 1
+                  ? "Upload complete"
+                  : `All ${completedUploads.length} files uploaded`}
+              </div>
               <div style={{ color: "#666", fontSize: 13, marginTop: 2 }}>
-                Your file has been uploaded and processed successfully.
+                {completedUploads.length === 1
+                  ? "Your file has been uploaded and processed successfully."
+                  : "All files have been uploaded and processed successfully."}
               </div>
             </div>
           </div>
-          <button
-            onClick={handleReset}
-            style={{
-              marginTop: 12,
-              padding: "6px 14px",
-              borderRadius: 8,
-              background: "transparent",
-              border: "1px solid #ddd",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            Upload another file
-          </button>
         </div>
+      )}
+
+      {allDone && (
+        <MultiPreviewSelector uploads={completedUploads} />
       )}
 
       {/* Phase: Error */}
@@ -183,9 +254,9 @@ export default function UploadWizard() {
             {state.message}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {state.retryable && file && (
+            {state.retryable && pendingFiles.length > 0 && uploadingIndex >= 0 && (
               <button
-                onClick={() => { if (file) start(file) }}
+                onClick={() => start(pendingFiles[uploadingIndex])}
                 style={{
                   padding: "8px 16px",
                   borderRadius: 8,
@@ -213,11 +284,6 @@ export default function UploadWizard() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* Inline Preview (after done) */}
-      {state.phase === "done" && sessionId && (
-        <DataPreviewTable sessionId={sessionId} />
       )}
     </div>
   )
