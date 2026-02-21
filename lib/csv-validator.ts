@@ -44,6 +44,12 @@ export function validateCsvContent(content: string): CsvValidationResult {
     warnings.push("no-header")
   }
 
+  // Check raw header line for duplicates (PapaParse auto-renames them)
+  const rawHeaders = content.trim().split(/\r?\n/)[0]!.split(",").map((h) => h.trim())
+  if (new Set(rawHeaders).size < rawHeaders.length) {
+    warnings.push("duplicate-columns")
+  }
+
   const rows = result.data as Record<string, string>[]
   if (rows.length === 0 || rows.every((row) => Object.values(row).every((v) => v.trim() === ""))) {
     warnings.push("no-data")

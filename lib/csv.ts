@@ -7,7 +7,7 @@ export function parseCsvPreview(csvText: string, maxRows: number) {
   let dataStartIndex: number
 
   if (hasHeader) {
-    columns = firstLineValues
+    columns = deduplicateColumns(firstLineValues)
     dataStartIndex = 1
   } else {
     columns = firstLineValues.map((_, i) => `Column ${i + 1}`)
@@ -29,6 +29,16 @@ export function parseCsvPreview(csvText: string, maxRows: number) {
   }
 
   return { columns, rows, types, hasHeader }
+}
+
+function deduplicateColumns(columns: string[]): string[] {
+  const seen = new Map<string, number>()
+  return columns.map((col) => {
+    const count = seen.get(col) ?? 0
+    seen.set(col, count + 1)
+    if (count === 0) return col
+    return `${col}_${count + 1}`
+  })
 }
 
 function looksLikeDataRow(values: string[]): boolean {

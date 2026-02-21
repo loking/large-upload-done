@@ -32,4 +32,32 @@ describe("parseCsvPreview", () => {
     expect(result.columns).toEqual(["name", "city", "country"])
     expect(result.rows.length).toBe(2)
   })
+
+  it("deduplicates duplicate column names and preserves all data", () => {
+    const csv = "id,amount,amount,name,amount\n1,100,200,Alice,300\n2,150,250,Bob,350\n"
+    const result = parseCsvPreview(csv, 100)
+
+    // Columns should be unique (suffixed with _2, _3, etc.)
+    expect(result.columns).toEqual(["id", "amount", "amount_2", "name", "amount_3"])
+
+    // All columns should be unique — no React key collisions
+    expect(new Set(result.columns).size).toBe(result.columns.length)
+
+    // All data should be preserved (no overwriting)
+    expect(result.rows.length).toBe(2)
+    expect(result.rows[0]["id"]).toBe("1")
+    expect(result.rows[0]["amount"]).toBe("100")
+    expect(result.rows[0]["amount_2"]).toBe("200")
+    expect(result.rows[0]["name"]).toBe("Alice")
+    expect(result.rows[0]["amount_3"]).toBe("300")
+  })
+
+  it("handles two duplicate columns without breaking other columns", () => {
+    const csv = "a,b,a\n1,2,3\n"
+    const result = parseCsvPreview(csv, 100)
+    expect(result.columns).toEqual(["a", "b", "a_2"])
+    expect(result.rows[0]["a"]).toBe("1")
+    expect(result.rows[0]["b"]).toBe("2")
+    expect(result.rows[0]["a_2"]).toBe("3")
+  })
 })

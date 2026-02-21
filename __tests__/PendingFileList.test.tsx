@@ -190,6 +190,27 @@ describe("PendingFileList", () => {
     expect(onStart).toHaveBeenCalledOnce()
   })
 
+  it("shows warning for duplicate columns but allows upload", async () => {
+    const onStart = vi.fn()
+    const files = [createFile("dupes.csv", "id,amount,amount,name,amount\n1,100,200,Alice,300\n")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    // Should show warning about duplicate columns
+    expect(screen.getByTestId("file-warning-0")).toBeTruthy()
+    expect(screen.getByTestId("file-warning-0").textContent).toMatch(/duplicate col/i)
+
+    // Start button should be ENABLED — file is still uploadable
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(false)
+
+    fireEvent.click(startBtn)
+    expect(onStart).toHaveBeenCalledOnce()
+  })
+
   it("does not render start button or file items when hidden prop is true", () => {
     const files = [createFile("a.csv", "id\n1\n")]
     const { container } = render(

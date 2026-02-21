@@ -75,6 +75,25 @@ describe("validateCsvContent", () => {
     }
   })
 
+  it("returns valid with duplicate-columns warning for CSV with repeated column names", () => {
+    const csv = "id,amount,amount,name,amount\n1,100,200,Alice,300\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    expect(result).toHaveProperty("warnings")
+    if (result.valid) {
+      expect(result.warnings).toContain("duplicate-columns")
+    }
+  })
+
+  it("does not return duplicate-columns warning for unique column names", () => {
+    const csv = "id,name,email\n1,Alice,a@test.com\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    if (result.valid) {
+      expect(result.warnings ?? []).not.toContain("duplicate-columns")
+    }
+  })
+
   it("does not return no-data warning for CSV with actual data", () => {
     const csv = "id,name\n1,Alice\n2,Bob\n"
     const result = validateCsvContent(csv)
@@ -104,5 +123,9 @@ describe("isUploadable", () => {
 
   it("returns false for valid CSV with both no-header and no-data warnings", () => {
     expect(isUploadable({ valid: true, warnings: ["no-header", "no-data"] })).toBe(false)
+  })
+
+  it("returns true for valid CSV with duplicate-columns warning", () => {
+    expect(isUploadable({ valid: true, warnings: ["duplicate-columns"] })).toBe(true)
   })
 })

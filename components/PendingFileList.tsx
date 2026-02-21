@@ -103,7 +103,7 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
                     style={{ color: "#92400e", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
                   >
                     <span style={{ fontSize: 14 }}>&#9888;</span>
-                    {w === "no-header" ? "No header row detected" : w === "no-data" ? "No data rows — will be skipped" : w}
+                    {w === "no-header" ? "No header row detected" : w === "no-data" ? "No data rows — will be skipped" : w === "duplicate-columns" ? "Duplicate column names detected" : w}
                   </span>
                 ))}
               </div>
