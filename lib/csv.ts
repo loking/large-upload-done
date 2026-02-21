@@ -1,26 +1,36 @@
+import Papa from "papaparse"
+
 export function parseCsvPreview(csvText: string, maxRows: number) {
-  const lines = csvText.split(/\r?\n/).filter((l) => l.length > 0)
-  const firstLineValues = splitCsvLine(lines[0] ?? "")
-  const hasHeader = !looksLikeDataRow(firstLineValues)
+  // Use PapaParse without header mode first to inspect the raw first row
+  const raw = Papa.parse<string[]>(csvText, {
+    header: false,
+    preview: maxRows + 1,
+    skipEmptyLines: true,
+  })
+
+  const firstRow = raw.data[0]
+  if (!firstRow || firstRow.length === 0) {
+    return { columns: [], rows: [], types: {}, hasHeader: false }
+  }
+
+  const hasHeader = !looksLikeDataRow(firstRow)
 
   let columns: string[]
-  let dataStartIndex: number
+  let dataRows: string[][]
 
   if (hasHeader) {
-    columns = deduplicateColumns(firstLineValues)
-    dataStartIndex = 1
+    columns = deduplicateColumns(firstRow)
+    dataRows = raw.data.slice(1)
   } else {
-    columns = firstLineValues.map((_, i) => `Column ${i + 1}`)
-    dataStartIndex = 0
+    columns = firstRow.map((_, i) => `Column ${i + 1}`)
+    dataRows = raw.data
   }
 
-  const rows: Record<string, string>[] = []
-  for (let i = dataStartIndex; i < Math.min(lines.length, maxRows + dataStartIndex); i++) {
-    const vals = splitCsvLine(lines[i]!)
+  const rows: Record<string, string>[] = dataRows.map((vals) => {
     const row: Record<string, string> = {}
     for (let c = 0; c < columns.length; c++) row[columns[c]!] = vals[c] ?? ""
-    rows.push(row)
-  }
+    return row
+  })
 
   const types: Record<string, string> = {}
   for (const col of columns) {
@@ -45,22 +55,6 @@ function looksLikeDataRow(values: string[]): boolean {
   return values.some(
     (v) => /^-?\d+(\.\d+)?$/.test(v.trim()) || /^(true|false)$/i.test(v.trim())
   )
-}
-
-// Minimal CSV splitter (handles quotes). Good enough for take-home.
-function splitCsvLine(line: string): string[] {
-  const out: string[] = []
-  let cur = ""
-  let inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!
-    if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; continue }
-    if (ch === '"') { inQuotes = !inQuotes; continue }
-    if (ch === "," && !inQuotes) { out.push(cur); cur = ""; continue }
-    cur += ch
-  }
-  out.push(cur)
-  return out
 }
 
 function inferType(sample: string[]) {
