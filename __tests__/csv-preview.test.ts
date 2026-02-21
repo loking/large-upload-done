@@ -60,4 +60,31 @@ describe("parseCsvPreview", () => {
     expect(result.rows[0]["b"]).toBe("2")
     expect(result.rows[0]["a_2"]).toBe("3")
   })
+
+  it("handles quoted fields with embedded commas", () => {
+    const csv = 'name,address,age\n"Smith, John","123 Main St, Apt 4",30\n'
+    const result = parseCsvPreview(csv, 100)
+    expect(result.columns).toEqual(["name", "address", "age"])
+    expect(result.rows.length).toBe(1)
+    expect(result.rows[0]["name"]).toBe("Smith, John")
+    expect(result.rows[0]["address"]).toBe("123 Main St, Apt 4")
+    expect(result.rows[0]["age"]).toBe("30")
+  })
+
+  it("handles quoted fields with embedded newlines", () => {
+    const csv = 'id,note,value\n1,"line one\nline two",100\n2,"single line",200\n'
+    const result = parseCsvPreview(csv, 100)
+    expect(result.columns).toEqual(["id", "note", "value"])
+    expect(result.rows.length).toBe(2)
+    expect(result.rows[0]["note"]).toBe("line one\nline two")
+    expect(result.rows[0]["value"]).toBe("100")
+    expect(result.rows[1]["note"]).toBe("single line")
+  })
+
+  it("handles UTF-8 BOM prefix without corrupting the first header", () => {
+    const csv = "\uFEFFid,name,score\n1,Alice,95\n"
+    const result = parseCsvPreview(csv, 100)
+    expect(result.columns).toEqual(["id", "name", "score"])
+    expect(result.rows[0]["id"]).toBe("1")
+  })
 })

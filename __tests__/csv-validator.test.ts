@@ -94,6 +94,15 @@ describe("validateCsvContent", () => {
     }
   })
 
+  it("does not false-positive duplicate-columns when header has quoted commas", () => {
+    const csv = '"Last, First",age,email\n"Smith, John",30,j@test.com\n'
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    if (result.valid) {
+      expect(result.warnings ?? []).not.toContain("duplicate-columns")
+    }
+  })
+
   it("does not return no-data warning for CSV with actual data", () => {
     const csv = "id,name\n1,Alice\n2,Bob\n"
     const result = validateCsvContent(csv)

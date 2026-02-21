@@ -45,7 +45,9 @@ export function validateCsvContent(content: string): CsvValidationResult {
   }
 
   // Check raw header line for duplicates (PapaParse auto-renames them)
-  const rawHeaders = content.trim().split(/\r?\n/)[0]!.split(",").map((h) => h.trim())
+  // Use PapaParse to split the header so quoted commas are handled correctly
+  const headerParse = Papa.parse(content.trim().split(/\r?\n/)[0]!, { header: false })
+  const rawHeaders = (headerParse.data[0] as string[]).map((h) => h.trim())
   if (new Set(rawHeaders).size < rawHeaders.length) {
     warnings.push("duplicate-columns")
   }
