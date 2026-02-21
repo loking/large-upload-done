@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { validateCsvContent } from "@/lib/csv-validator"
+import { validateCsvContent, isUploadable } from "@/lib/csv-validator"
 
 describe("validateCsvContent", () => {
   it("accepts valid CSV with headers and rows", () => {
@@ -7,9 +7,23 @@ describe("validateCsvContent", () => {
     expect(result.valid).toBe(true)
   })
 
-  it("accepts CSV with only headers (no data rows)", () => {
-    const result = validateCsvContent("id,name,email\n")
+  it("returns valid with no-data warning when CSV has only headers", () => {
+    const result = validateCsvContent("id,name,email,created_at,is_active,score\n")
     expect(result.valid).toBe(true)
+    expect(result).toHaveProperty("warnings")
+    if (result.valid) {
+      expect(result.warnings).toContain("no-data")
+    }
+  })
+
+  it("returns valid with no-data warning when all values are empty", () => {
+    const csv = "id,name,email,phone\n,,,\n,,,\n,,,\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    expect(result).toHaveProperty("warnings")
+    if (result.valid) {
+      expect(result.warnings).toContain("no-data")
+    }
   })
 
   it("accepts single-column CSV", () => {
@@ -59,5 +73,36 @@ describe("validateCsvContent", () => {
     if (result.valid) {
       expect(result.warnings ?? []).not.toContain("no-header")
     }
+  })
+
+  it("does not return no-data warning for CSV with actual data", () => {
+    const csv = "id,name\n1,Alice\n2,Bob\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    if (result.valid) {
+      expect(result.warnings ?? []).not.toContain("no-data")
+    }
+  })
+})
+
+describe("isUploadable", () => {
+  it("returns true for valid CSV with data", () => {
+    expect(isUploadable({ valid: true })).toBe(true)
+  })
+
+  it("returns true for valid CSV with no-header warning", () => {
+    expect(isUploadable({ valid: true, warnings: ["no-header"] })).toBe(true)
+  })
+
+  it("returns false for invalid CSV", () => {
+    expect(isUploadable({ valid: false, error: "Not a valid CSV file" })).toBe(false)
+  })
+
+  it("returns false for valid CSV with no-data warning", () => {
+    expect(isUploadable({ valid: true, warnings: ["no-data"] })).toBe(false)
+  })
+
+  it("returns false for valid CSV with both no-header and no-data warnings", () => {
+    expect(isUploadable({ valid: true, warnings: ["no-header", "no-data"] })).toBe(false)
   })
 })

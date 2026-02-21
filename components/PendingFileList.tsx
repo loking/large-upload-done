@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { validateCsvFile } from "@/lib/csv-validator"
+import { validateCsvFile, isUploadable } from "@/lib/csv-validator"
 
 interface PendingFileListProps {
   files: File[]
@@ -52,7 +52,10 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
 
   if (hidden || files.length === 0) return null
 
-  const hasValidFile = files.some((f) => validations.get(f)?.state === "valid")
+  const hasUploadableFile = files.some((f) => {
+    const v = validations.get(f)
+    return v?.state === "valid" && isUploadable({ valid: true, warnings: v.warnings })
+  })
   const allValidated = files.every((f) => {
     const v = validations.get(f)
     return v && v.state !== "pending"
@@ -100,7 +103,7 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
                     style={{ color: "#92400e", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
                   >
                     <span style={{ fontSize: 14 }}>&#9888;</span>
-                    {w === "no-header" ? "No header row detected" : w}
+                    {w === "no-header" ? "No header row detected" : w === "no-data" ? "No data rows — will be skipped" : w}
                   </span>
                 ))}
               </div>
@@ -125,18 +128,18 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
         })}
       </div>
       <button
-        onClick={() => { if (hasValidFile) onStart() }}
-        disabled={!hasValidFile || !allValidated}
+        onClick={() => { if (hasUploadableFile) onStart() }}
+        disabled={!hasUploadableFile || !allValidated}
         style={{
           marginTop: 12,
           padding: "10px 20px",
           borderRadius: 8,
-          background: hasValidFile && allValidated ? "#111" : "#999",
+          background: hasUploadableFile && allValidated ? "#111" : "#999",
           color: "#fff",
           border: "none",
-          cursor: hasValidFile && allValidated ? "pointer" : "not-allowed",
+          cursor: hasUploadableFile && allValidated ? "pointer" : "not-allowed",
           fontWeight: 500,
-          opacity: hasValidFile && allValidated ? 1 : 0.6,
+          opacity: hasUploadableFile && allValidated ? 1 : 0.6,
         }}
       >
         Start upload

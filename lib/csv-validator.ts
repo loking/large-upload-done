@@ -44,13 +44,30 @@ export function validateCsvContent(content: string): CsvValidationResult {
     warnings.push("no-header")
   }
 
+  const rows = result.data as Record<string, string>[]
+  if (rows.length === 0 || rows.every((row) => Object.values(row).every((v) => v.trim() === ""))) {
+    warnings.push("no-data")
+  }
+
   return warnings.length > 0 ? { valid: true, warnings } : { valid: true }
+}
+
+export function isUploadable(result: CsvValidationResult): boolean {
+  if (!result.valid) return false
+  return !result.warnings?.includes("no-data")
 }
 
 function looksLikeDataRow(fields: string[]): boolean {
   return fields.some(
     (f) => /^-?\d+(\.\d+)?$/.test(f.trim()) || /^(true|false)$/i.test(f.trim())
   )
+}
+
+export async function filterUploadableFiles(files: File[]): Promise<File[]> {
+  const results = await Promise.all(
+    files.map((f) => validateCsvFile(f).then((r) => ({ file: f, result: r })))
+  )
+  return results.filter((r) => isUploadable(r.result)).map((r) => r.file)
 }
 
 export async function validateCsvFile(file: File): Promise<CsvValidationResult> {

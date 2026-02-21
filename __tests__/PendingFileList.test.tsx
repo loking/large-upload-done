@@ -130,6 +130,66 @@ describe("PendingFileList", () => {
     expect(onStart).toHaveBeenCalledOnce()
   })
 
+  it("shows warning for headers-only CSV and disables start button", async () => {
+    const onStart = vi.fn()
+    const files = [createFile("headers-only.csv", "id,name,email,created_at,is_active,score\n")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    // Should show warning
+    expect(screen.getByTestId("file-warning-0")).toBeTruthy()
+    expect(screen.getByTestId("file-warning-0").textContent).toMatch(/no data/i)
+
+    // Start button should be disabled — file is skipped like invalid
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(true)
+
+    fireEvent.click(startBtn)
+    expect(onStart).not.toHaveBeenCalled()
+  })
+
+  it("shows warning for all-empty-values CSV and disables start button", async () => {
+    const onStart = vi.fn()
+    const files = [createFile("empty-vals.csv", "id,name,email,phone\n,,,\n,,,\n,,,\n")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    expect(screen.getByTestId("file-warning-0")).toBeTruthy()
+    expect(screen.getByTestId("file-warning-0").textContent).toMatch(/no data/i)
+
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(true)
+
+    fireEvent.click(startBtn)
+    expect(onStart).not.toHaveBeenCalled()
+  })
+
+  it("enables start button when mix of uploadable and no-data files", async () => {
+    const onStart = vi.fn()
+    const files = [
+      createFile("good.csv", "id,name\n1,Alice\n"),
+      createFile("headers-only.csv", "id,name,email\n"),
+    ]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+      expect(screen.getByTestId("file-status-1").dataset.valid).toBe("true")
+    })
+
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(false)
+
+    fireEvent.click(startBtn)
+    expect(onStart).toHaveBeenCalledOnce()
+  })
+
   it("does not render start button or file items when hidden prop is true", () => {
     const files = [createFile("a.csv", "id\n1\n")]
     const { container } = render(

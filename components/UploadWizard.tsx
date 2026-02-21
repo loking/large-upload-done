@@ -5,7 +5,7 @@ import { useChunkedUpload } from "@/hooks/useChunkedUpload"
 import DropZone from "@/components/DropZone"
 import PendingFileList from "@/components/PendingFileList"
 import MultiPreviewSelector from "@/components/MultiPreviewSelector"
-import { validateCsvFile } from "@/lib/csv-validator"
+import { filterUploadableFiles } from "@/lib/csv-validator"
 
 function formatBytes(n: number) {
   const units = ["B", "KB", "MB", "GB"]
@@ -68,11 +68,8 @@ export default function UploadWizard() {
   }
 
   const handleStart = async () => {
-    // Filter to only valid CSV files
-    const results = await Promise.all(
-      pendingFiles.map((f) => validateCsvFile(f).then((r) => ({ file: f, valid: r.valid })))
-    )
-    const valid = results.filter((r) => r.valid).map((r) => r.file)
+    // Filter to only uploadable CSV files (excludes invalid, headers-only, all-empty)
+    const valid = await filterUploadableFiles(pendingFiles)
     if (valid.length === 0) return
     validFilesRef.current = valid
     setUploadingIndex(0)
