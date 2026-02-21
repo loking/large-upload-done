@@ -11,6 +11,11 @@ export function validateCsvContent(content: string): CsvValidationResult {
     return { valid: false, error: NOT_VALID }
   }
 
+  // U+FFFD appears when non-UTF-8 bytes are decoded as UTF-8
+  if (content.includes("\uFFFD")) {
+    return { valid: false, error: "File is not UTF-8 encoded" }
+  }
+
   const result = Papa.parse(content, {
     header: true,
     preview: 10,

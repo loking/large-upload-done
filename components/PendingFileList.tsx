@@ -94,7 +94,22 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
                   )}
                 </span>
                 {isInvalid && v.error && (
-                  <span style={{ color: "#b91c1c", fontSize: 12 }}>{v.error}</span>
+                  <span style={{ color: "#b91c1c", fontSize: 12 }}>
+                    {v.error}
+                    {v.error.includes("UTF-8") && (
+                      <>
+                        {" — "}
+                        <a
+                          href="https://support.meistertask.com/hc/en-us/articles/4406395262354-How-Do-I-Encode-My-CSV-File-Using-the-UTF-8-Format"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "#2563eb", textDecoration: "underline" }}
+                        >
+                          How to fix &#8599;
+                        </a>
+                      </>
+                    )}
+                  </span>
                 )}
                 {hasWarnings && v.warnings!.map((w, wi) => (
                   <span

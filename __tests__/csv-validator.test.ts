@@ -112,6 +112,17 @@ describe("validateCsvContent", () => {
     }
   })
 
+  it("rejects non-UTF-8 content (contains replacement characters)", () => {
+    // Simulates what happens when Latin-1 bytes like é (0xE9) are decoded as UTF-8:
+    // invalid sequences become U+FFFD replacement characters
+    const csv = "id,name,city\n1,Ren\uFFFD,Montr\uFFFDal\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(false)
+    if (!result.valid) {
+      expect(result.error).toMatch(/UTF-8/i)
+    }
+  })
+
   it("returns valid with mixed-types warning when a column has inconsistent types", () => {
     const csv = "id,value,flag,date\n1,100,true,2024-01-15\n2,hello,false,2024-02-20\n3,300,maybe,not-a-date\n"
     const result = validateCsvContent(csv)
