@@ -1,0 +1,99 @@
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { describe, it, expect, vi } from "vitest"
+import PendingFileList from "@/components/PendingFileList"
+
+function createFile(name: string, content: string): File {
+  return new File([content], name, { type: "text/csv" })
+}
+
+describe("PendingFileList", () => {
+  it("renders nothing when list is empty", () => {
+    const { container } = render(
+      <PendingFileList files={[]} onRemove={vi.fn()} onStart={vi.fn()} />
+    )
+    expect(container.querySelector("[data-testid='pending-file-list']")).toBeNull()
+  })
+
+  it("renders file names with validation status", async () => {
+    const files = [
+      createFile("valid.csv", "id,name\n1,Alice\n"),
+      createFile("bad.csv", "   "),
+    ]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={vi.fn()} />)
+
+    // Files appear immediately
+    expect(screen.getByText(/valid\.csv/)).toBeTruthy()
+    expect(screen.getByText(/bad\.csv/)).toBeTruthy()
+
+    // After async validation, bad file should show invalid indicator
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-1").dataset.valid).toBe("false")
+    })
+    // Valid file should be marked valid
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+  })
+
+  it("shows error message for invalid files", async () => {
+    const files = [createFile("bad.csv", "   ")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/not a valid csv/i)).toBeTruthy()
+    })
+  })
+
+  it("calls onRemove with index when remove button is clicked", () => {
+    const onRemove = vi.fn()
+    const files = [createFile("a.csv", "id\n1\n"), createFile("b.csv", "id\n2\n")]
+    render(<PendingFileList files={files} onRemove={onRemove} onStart={vi.fn()} />)
+
+    const removeButtons = screen.getAllByLabelText(/remove/i)
+    fireEvent.click(removeButtons[1])
+    expect(onRemove).toHaveBeenCalledWith(1)
+  })
+
+  it("disables start button when all files are invalid", async () => {
+    const onStart = vi.fn()
+    const files = [createFile("bad.csv", "   ")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("false")
+    })
+
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(true)
+
+    fireEvent.click(startBtn)
+    expect(onStart).not.toHaveBeenCalled()
+  })
+
+  it("start button is enabled when at least one file is valid", async () => {
+    const onStart = vi.fn()
+    const files = [
+      createFile("good.csv", "id,name\n1,Alice\n"),
+      createFile("bad.csv", "   "),
+    ]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(false)
+
+    fireEvent.click(startBtn)
+    expect(onStart).toHaveBeenCalledOnce()
+  })
+
+  it("does not render start button or file items when hidden prop is true", () => {
+    const files = [createFile("a.csv", "id\n1\n")]
+    const { container } = render(
+      <PendingFileList files={files} onRemove={vi.fn()} onStart={vi.fn()} hidden />
+    )
+    expect(container.querySelector("[data-testid='pending-file-list']")).toBeNull()
+  })
+})
