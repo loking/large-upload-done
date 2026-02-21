@@ -55,12 +55,36 @@ export function validateCsvContent(content: string): CsvValidationResult {
     warnings.push("no-data")
   }
 
+  if (rows.length >= 2 && hasMixedTypes(rows, fields)) {
+    warnings.push("mixed-types")
+  }
+
   return warnings.length > 0 ? { valid: true, warnings } : { valid: true }
 }
 
 export function isUploadable(result: CsvValidationResult): boolean {
   if (!result.valid) return false
   return !result.warnings?.includes("no-data")
+}
+
+function inferType(value: string): "number" | "boolean" | "empty" | "string" {
+  const v = value.trim()
+  if (v === "") return "empty"
+  if (/^-?\d+(\.\d+)?$/.test(v)) return "number"
+  if (/^(true|false)$/i.test(v)) return "boolean"
+  return "string"
+}
+
+function hasMixedTypes(rows: Record<string, string>[], fields: string[]): boolean {
+  for (const field of fields) {
+    const types = new Set<string>()
+    for (const row of rows) {
+      const t = inferType(row[field] ?? "")
+      if (t !== "empty") types.add(t)
+    }
+    if (types.size > 1) return true
+  }
+  return false
 }
 
 function looksLikeDataRow(fields: string[]): boolean {

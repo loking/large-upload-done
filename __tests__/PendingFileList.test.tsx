@@ -211,6 +211,28 @@ describe("PendingFileList", () => {
     expect(onStart).toHaveBeenCalledOnce()
   })
 
+  it("shows warning for mixed-types CSV but allows upload", async () => {
+    const onStart = vi.fn()
+    const csv = "id,value,flag,date\n1,100,true,2024-01-15\n2,hello,false,2024-02-20\n3,300,maybe,not-a-date\n"
+    const files = [createFile("mixed.csv", csv)]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    // Should show warning about mixed types
+    expect(screen.getByTestId("file-warning-0")).toBeTruthy()
+    expect(screen.getByTestId("file-warning-0").textContent).toMatch(/mixed/i)
+
+    // Start button should be ENABLED — file is still uploadable
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(false)
+
+    fireEvent.click(startBtn)
+    expect(onStart).toHaveBeenCalledOnce()
+  })
+
   it("does not render start button or file items when hidden prop is true", () => {
     const files = [createFile("a.csv", "id\n1\n")]
     const { container } = render(

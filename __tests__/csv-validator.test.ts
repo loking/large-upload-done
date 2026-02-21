@@ -102,6 +102,25 @@ describe("validateCsvContent", () => {
       expect(result.warnings ?? []).not.toContain("no-data")
     }
   })
+
+  it("returns valid with mixed-types warning when a column has inconsistent types", () => {
+    const csv = "id,value,flag,date\n1,100,true,2024-01-15\n2,hello,false,2024-02-20\n3,300,maybe,not-a-date\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    expect(result).toHaveProperty("warnings")
+    if (result.valid) {
+      expect(result.warnings).toContain("mixed-types")
+    }
+  })
+
+  it("does not return mixed-types warning when all columns have consistent types", () => {
+    const csv = "id,name,score\n1,Alice,95\n2,Bob,87\n3,Carol,92\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    if (result.valid) {
+      expect(result.warnings ?? []).not.toContain("mixed-types")
+    }
+  })
 })
 
 describe("isUploadable", () => {
@@ -127,5 +146,9 @@ describe("isUploadable", () => {
 
   it("returns true for valid CSV with duplicate-columns warning", () => {
     expect(isUploadable({ valid: true, warnings: ["duplicate-columns"] })).toBe(true)
+  })
+
+  it("returns true for valid CSV with mixed-types warning", () => {
+    expect(isUploadable({ valid: true, warnings: ["mixed-types"] })).toBe(true)
   })
 })

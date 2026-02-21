@@ -1,0 +1,7 @@
+id,value,flag,date
+1,100,true,2024-01-15
+2,hello,false,2024-02-20
+3,300,maybe,not-a-date
+4,,true,2024-04-10
+5,500,TRUE,
+6,six,False,2024-06-01
