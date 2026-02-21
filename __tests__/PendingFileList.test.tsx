@@ -89,6 +89,47 @@ describe("PendingFileList", () => {
     expect(onStart).toHaveBeenCalledOnce()
   })
 
+  it("shows warning icon for valid file with no-header warning", async () => {
+    const files = [createFile("no-header.csv", "1,Alice,alice@test.com,30,true\n2,Bob,bob@test.com,25,false\n")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={vi.fn()} />)
+
+    // File should still be valid
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    // Should show a warning indicator
+    expect(screen.getByTestId("file-warning-0")).toBeTruthy()
+    expect(screen.getByTestId("file-warning-0").textContent).toMatch(/no header/i)
+  })
+
+  it("does not show warning icon for normal valid CSV", async () => {
+    const files = [createFile("good.csv", "id,name\n1,Alice\n")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    expect(screen.queryByTestId("file-warning-0")).toBeNull()
+  })
+
+  it("allows upload of files with no-header warning (start button enabled)", async () => {
+    const onStart = vi.fn()
+    const files = [createFile("no-header.csv", "1,Alice,alice@test.com,30,true\n2,Bob,bob@test.com,25,false\n")]
+    render(<PendingFileList files={files} onRemove={vi.fn()} onStart={onStart} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-status-0").dataset.valid).toBe("true")
+    })
+
+    const startBtn = screen.getByRole("button", { name: /start upload/i })
+    expect(startBtn.hasAttribute("disabled")).toBe(false)
+
+    fireEvent.click(startBtn)
+    expect(onStart).toHaveBeenCalledOnce()
+  })
+
   it("does not render start button or file items when hidden prop is true", () => {
     const files = [createFile("a.csv", "id\n1\n")]
     const { container } = render(

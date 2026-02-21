@@ -1,10 +1,21 @@
 export function parseCsvPreview(csvText: string, maxRows: number) {
   const lines = csvText.split(/\r?\n/).filter((l) => l.length > 0)
-  const headerLine = lines[0] ?? ""
-  const columns = splitCsvLine(headerLine)
+  const firstLineValues = splitCsvLine(lines[0] ?? "")
+  const hasHeader = !looksLikeDataRow(firstLineValues)
+
+  let columns: string[]
+  let dataStartIndex: number
+
+  if (hasHeader) {
+    columns = firstLineValues
+    dataStartIndex = 1
+  } else {
+    columns = firstLineValues.map((_, i) => `Column ${i + 1}`)
+    dataStartIndex = 0
+  }
 
   const rows: Record<string, string>[] = []
-  for (let i = 1; i < Math.min(lines.length, maxRows + 1); i++) {
+  for (let i = dataStartIndex; i < Math.min(lines.length, maxRows + dataStartIndex); i++) {
     const vals = splitCsvLine(lines[i]!)
     const row: Record<string, string> = {}
     for (let c = 0; c < columns.length; c++) row[columns[c]!] = vals[c] ?? ""
@@ -17,7 +28,13 @@ export function parseCsvPreview(csvText: string, maxRows: number) {
     types[col] = inferType(sample)
   }
 
-  return { columns, rows, types }
+  return { columns, rows, types, hasHeader }
+}
+
+function looksLikeDataRow(values: string[]): boolean {
+  return values.some(
+    (v) => /^-?\d+(\.\d+)?$/.test(v.trim()) || /^(true|false)$/i.test(v.trim())
+  )
 }
 
 // Minimal CSV splitter (handles quotes). Good enough for take-home.

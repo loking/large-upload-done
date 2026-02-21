@@ -15,6 +15,7 @@ type ValidationState = "pending" | "valid" | "invalid"
 interface FileValidation {
   state: ValidationState
   error?: string
+  warnings?: string[]
 }
 
 function formatBytes(n: number) {
@@ -39,7 +40,7 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
         setValidations((prev) => {
           const next = new Map(prev)
           if (result.valid) {
-            next.set(file, { state: "valid" })
+            next.set(file, { state: "valid", warnings: result.warnings })
           } else {
             next.set(file, { state: "invalid", error: result.error })
           }
@@ -63,6 +64,7 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
         {files.map((f, i) => {
           const v = validations.get(f)
           const isInvalid = v?.state === "invalid"
+          const hasWarnings = v?.state === "valid" && v.warnings && v.warnings.length > 0
           return (
             <div
               key={`${f.name}-${i}`}
@@ -73,8 +75,8 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "8px 12px",
-                background: isInvalid ? "#fef2f2" : "#f9fafb",
-                border: isInvalid ? "1px solid #fecaca" : "1px solid transparent",
+                background: isInvalid ? "#fef2f2" : hasWarnings ? "#fffbeb" : "#f9fafb",
+                border: isInvalid ? "1px solid #fecaca" : hasWarnings ? "1px solid #fde68a" : "1px solid transparent",
                 borderRadius: 8,
                 fontSize: 14,
               }}
@@ -91,6 +93,16 @@ export default function PendingFileList({ files, onRemove, onStart, hidden }: Pe
                 {isInvalid && v.error && (
                   <span style={{ color: "#b91c1c", fontSize: 12 }}>{v.error}</span>
                 )}
+                {hasWarnings && v.warnings!.map((w, wi) => (
+                  <span
+                    key={wi}
+                    data-testid={`file-warning-${i}`}
+                    style={{ color: "#92400e", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    <span style={{ fontSize: 14 }}>&#9888;</span>
+                    {w === "no-header" ? "No header row detected" : w}
+                  </span>
+                ))}
               </div>
               <button
                 onClick={() => onRemove(i)}
@@ -144,7 +156,7 @@ export function useFileValidations(files: File[]) {
         setValidations((prev) => {
           const next = new Map(prev)
           if (result.valid) {
-            next.set(file, { state: "valid" })
+            next.set(file, { state: "valid", warnings: result.warnings })
           } else {
             next.set(file, { state: "invalid", error: result.error })
           }

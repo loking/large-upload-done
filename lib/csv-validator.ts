@@ -1,7 +1,7 @@
 import Papa from "papaparse"
 
 export type CsvValidationResult =
-  | { valid: true }
+  | { valid: true; warnings?: string[] }
   | { valid: false; error: string }
 
 const NOT_VALID = "Not a valid CSV file"
@@ -39,7 +39,18 @@ export function validateCsvContent(content: string): CsvValidationResult {
     return { valid: false, error: NOT_VALID }
   }
 
-  return { valid: true }
+  const warnings: string[] = []
+  if (looksLikeDataRow(fields)) {
+    warnings.push("no-header")
+  }
+
+  return warnings.length > 0 ? { valid: true, warnings } : { valid: true }
+}
+
+function looksLikeDataRow(fields: string[]): boolean {
+  return fields.some(
+    (f) => /^-?\d+(\.\d+)?$/.test(f.trim()) || /^(true|false)$/i.test(f.trim())
+  )
 }
 
 export async function validateCsvFile(file: File): Promise<CsvValidationResult> {

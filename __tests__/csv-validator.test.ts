@@ -41,4 +41,23 @@ describe("validateCsvContent", () => {
     const result = validateCsvContent("just-a-random-string")
     expect(result.valid).toBe(false)
   })
+
+  it("returns valid with no-header warning when first row looks like data", () => {
+    const csv = "1,Alice,alice@test.com,30,true\n2,Bob,bob@test.com,25,false\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    expect(result).toHaveProperty("warnings")
+    if (result.valid) {
+      expect(result.warnings).toContain("no-header")
+    }
+  })
+
+  it("does not return no-header warning for normal CSV with headers", () => {
+    const csv = "id,name,email,age,active\n1,Alice,alice@test.com,30,true\n"
+    const result = validateCsvContent(csv)
+    expect(result.valid).toBe(true)
+    if (result.valid) {
+      expect(result.warnings ?? []).not.toContain("no-header")
+    }
+  })
 })
