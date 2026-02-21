@@ -1,0 +1,4 @@
+"user id","full name","email, work","salary ($)","notes ""internal"""
+1,Alice,alice@test.com,50000,good
+2,Bob,bob@test.com,60000,"has, commas"
+3,Charlie,charlie@test.com,55000,"says ""hello"""
