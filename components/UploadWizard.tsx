@@ -60,6 +60,13 @@ export default function UploadWizard() {
     state.phase === "done"
 
   const handleFilesSelected = (selected: File[]) => {
+    // Reset upload state when adding files after a completed upload
+    if (allDone) {
+      reset()
+      setCompletedUploads([])
+      setUploadingIndex(-1)
+      validFilesRef.current = []
+    }
     setPendingFiles((prev) => [...prev, ...selected])
   }
 
@@ -72,6 +79,7 @@ export default function UploadWizard() {
     const valid = await filterUploadableFiles(pendingFiles)
     if (valid.length === 0) return
     validFilesRef.current = valid
+    setPendingFiles([])
     setUploadingIndex(0)
     start(valid[0])
   }
