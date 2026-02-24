@@ -9,7 +9,8 @@
     "gen:csv": "tsx scripts/generate-sample-csv.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke-test": "tsx scripts/smoke-test.ts"
+    "smoke-test": "tsx scripts/smoke-test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "next": "15.1.6",
